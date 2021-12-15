@@ -234,5 +234,20 @@ function lazywebp_delete_webp_copy( $post_id ) {
 
     return $post_id;
 }
-
 add_filter( 'delete_attachment', 'lazywebp_delete_webp_copy' );
+
+function lazywebp_bulk_convert( $post_id ) {
+    $query_images = new WP_Query( array(
+        'post_type'      => 'attachment',
+        'post_mime_type' => 'image',
+        'post_status'    => 'inherit',
+        'fields'         => 'ids',
+        'posts_per_page' => - 1,
+    ) );
+
+    if ( $query_images->have_posts() ) {
+        foreach ( $query_images->posts as $imageID ) {
+            lazywebp_save_webp_copy( wp_get_attachment_metadata( $imageID ), $imageID );
+        }
+    }
+}
