@@ -2,7 +2,7 @@
 /*
 	Plugin Name: EasyLazy
 	Plugin URI: https://github.com/erikyo/EasyLazy
-	Description: WordPress plugin that lazyloads images while checking for the existence of webp, when it is active automatically all images you upload have been converted to webp format as well
+	Description: Convert and serve automatically webp images with lazyload to speedup your website consistently and with zero-config.
 	Author: Erik
 	Version: 0.0.1
 	Author URI: https://codekraft.it/
@@ -19,7 +19,7 @@ add_filter('post_thumbnail_html', 'lazywebp_filter');
 add_action("wp_body_open" , 'lazywebp_lazyload', 1);
 
 function lazywebp_filter($content) {
-    if (is_admin()) return true;
+    if (is_admin()) return $content;
     $content = preg_replace( '/(\s)src=/', ' src=\'\' data-src=', $content );
     $content = preg_replace( '/(\s)srcset=/', ' srcset=\'\' data-srcset=', $content );
     return $content;
@@ -30,14 +30,16 @@ function lazywebp_lazyload() {
     <style>.lazyloading,.lazyload{filter: opacity(0)}img.lazyloaded{animation: lazyFadeIn linear .2s;filter: opacity(1)}@keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}</style>
     <script>
 
+      hasWebpSupport = e => document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
+
       // check if the image exists
-      async function imageExists(url) {
+      async function imageExists(url, suffix = '') {
         if (url) return new Promise((resolve, reject) => {
           var image = new Image();
-          image.src = url + '.webp';
-          if (image.complete) resolve("isComplete");
-          image.onload = () => resolve("isLoading");
-          image.onerror = () => reject(`unable to locate ${url}.webp`)
+          image.src = url + suffix;
+          if (image.complete) resolve("complete");
+          image.onload = () => resolve("loading");
+          image.onerror = () => reject(`unable to locate ${url+suffix}`)
         });
       }
 
@@ -45,7 +47,7 @@ function lazywebp_lazyload() {
       async function imageLoaded(url) {
         if (url) return new Promise((resolve, reject) => {
           var image = new Image();
-          if (image.complete) resolve("isComplete");
+          if (image.complete) resolve();
           image.onerror = () => reject(`unable to locate ${url}`)
         });
       }
@@ -56,33 +58,48 @@ function lazywebp_lazyload() {
         }
       }
 
-      async function loadImage(elem) {
-        if ( elem.classList.contains('lazyloading') || !elem.getAttribute('src') || !elem.complete ) {
-          await imageExists(elem.dataset.src)
+      async function loadImage(elem, hasWebpSupport) {
+
+        const suffix = hasWebpSupport ? '.webp' : '';
+
+        if ( elem.classList.contains('lazyload') || !elem.getAttribute('src') || !elem.complete ) {
+          await imageExists(elem.dataset.src, suffix)
             .then((res) => {
+
               elem.classList.add('lazyload');
+
               // store the file extension
               const fileExt = elem.dataset.src.split('.').pop();
-              // hijack the request to webp image format
-              elem.src = elem.dataset.src + ".webp";
-              elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll("." + fileExt, `.${fileExt}.webp`) : '';
+
+              // hijack the request to webp image format if available
+              if (suffix) {
+                elem.src = elem.dataset.src + suffix;
+                elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll("." + fileExt, `.${fileExt + suffix}`) : '';
+              } else {
+                elem.src = elem.dataset.src;
+                elem.srcset = elem.dataset.srcset;
+              }
+
               // add a class once the image has been fully loaded
-              imageLoaded(elem.dataset.src).then(() => elem.classList.add('lazyloaded'))
+              imageLoaded(elem.dataset.src)
+                .then(() => {elem.classList.add('lazyloaded')})
+                .catch(() => {elem.classList.add('lazyload-error')})
             })
             .catch(() => {
               // there is no webp copy
               elem.classList.add('no-webp');
+
               if (elem.dataset.src) {
                 elem.src = elem.dataset.src;
                 elem.srcset = elem.dataset.srcset;
-                imageLoaded(elem.dataset.src).then(() => {
-                  elem.classList.add('lazyloaded')
-                })
+
+                imageLoaded(elem.dataset.src)
+                  .then(() => {elem.classList.add('lazyloaded')})
+                  .catch(() => {elem.classList.add('lazyload-error')})
               }
             })
-            .then(async () => {
+            .then(() => {
               // clean
-              elem.classList.remove('lazyloading');
               elem.classList.remove('lazyload');
               delete elem.dataset.src;
               delete elem.dataset.srcset;
@@ -91,10 +108,10 @@ function lazywebp_lazyload() {
       }
 
       // collect images that needs to be loaded
-      function loadImageObserver(entries, observer) {
+      function initImageObserver(entries, observer) {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            loadImage(entry.target);
+            loadImage(entry.target, hasWebpSupport);
           }
         });
       }
@@ -105,16 +122,18 @@ function lazywebp_lazyload() {
 
         // start the intersection observer
         if ('IntersectionObserver' in window) {
-          const observer = new IntersectionObserver(loadImageObserver);
+          const observer = new IntersectionObserver(initImageObserver);
           imgCollection.forEach(image => {
             if (!image.getAttribute('src')) {
-              image.onload = () => { image.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${image.naturalWidth} ${image.naturalHeight}"%3E%3C/svg%3E` }
+              image.onload = () => {
+                image.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${image.naturalWidth} ${image.naturalHeight}"%3E%3C/svg%3E`
+              }
             }
-            image.classList.add('lazyloading');
+            image.classList.add('lazyload');
             observer.observe(image)
           });
         } else {
-          imgCollection.forEach(image => loadImage(image));
+          imgCollection.forEach( image => loadImage(image) );
         }
       }
 
@@ -126,7 +145,6 @@ function lazywebp_lazyload() {
     </script>
     <?php
 }
-
 
 // WEBP automatic conversion on upload
 function lazywebp_explode_filepath( $filepath, $attachment_id ) {
