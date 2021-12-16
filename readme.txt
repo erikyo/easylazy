@@ -17,10 +17,11 @@ Convert and serve automatically webp images with lazyload to speedup your websit
 == Setup ==
 
 == Changelog ==
+0.0.1 Initial release
 
 == copyright ==
-Remove CapsLock, Copyright 2021 Codekraft Studio
-Remove CapsLock is distributed under the terms of the GNU GPL
+EasyLazy, Copyright 2021 Codekraft Studio
+EasyLazy is distributed under the terms of the GNU GPL
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
