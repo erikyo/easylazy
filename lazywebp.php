@@ -20,6 +20,8 @@ add_filter('post_thumbnail_html', 'lazywebp_filter');
 
 add_action("wp_footer" , 'lazywebp_lazyload', 1);
 
+add_filter('max_srcset_image_width', function() { return 1000; });
+
 // JS DEFER
 add_filter( 'script_loader_tag', 'lazywebp_defer_js', 20 );
 
