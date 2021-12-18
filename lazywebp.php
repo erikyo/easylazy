@@ -13,10 +13,26 @@ if ( !defined( 'ABSPATH' ) ) {
     die( 'Sorry, this file cannot be accessed directly.' );
 }
 
+// IMAGES OPTIMIZATIONS
 add_filter('the_content', 'lazywebp_filter');
 add_filter('wp_footer', 'lazywebp_filter');
 add_filter('post_thumbnail_html', 'lazywebp_filter');
+
 add_action("wp_footer" , 'lazywebp_lazyload', 1);
+
+// JS DEFER
+add_filter( 'script_loader_tag', 'lazywebp_defer_js', 20 );
+
+function lazywebp_defer_js( $url ) {
+    if (
+       is_user_logged_in() ||
+       false === strpos( $url, '.js' ) ||
+       strpos( $url, 'jquery.js' ) ||
+       strpos( $url, 'jquery-migrate.js' )
+    ) return $url;
+
+    return str_replace( ' src', ' defer src', $url );
+}
 
 function lazywebp_filter($content) {
     if (is_admin()) return $content;
@@ -46,10 +62,10 @@ function lazywebp_lazyload() {
     ?>
     <style>
       .lazyload{filter: opacity(0)}
-      img.lazyloaded{animation: lazyFadeIn linear .02s;filter: opacity(1)}
+      .lazyloaded{animation: lazyFadeIn linear .02s;filter: opacity(1)}
       @keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}
     </style>
-    <script>
+    <script async>
 
       hasWebpSupport = e => document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
 
@@ -193,7 +209,7 @@ function lazywebp_lazyload() {
       }
 
       // the page mutation observer
-      const pageWatcher = page => {
+      const interceptor = page => {
         // Create an observer instance linked to the callback function
         const mutationObserver = new MutationObserver(initMutationObserver);
         // Start observing the target node for configured mutations
@@ -226,7 +242,7 @@ function lazywebp_lazyload() {
           });
 
           // watch for new images added to the DOM
-          pageWatcher(page);
+          interceptor(page);
 
         } else {
           // intersection observer is not supported, just load all the images
@@ -235,9 +251,8 @@ function lazywebp_lazyload() {
 
       }
 
-      // on windows load trigger the lazyload
-
-      lazyload(document.getElementById("page"))
+      // on script load trigger immediately the lazyload
+      lazyload(document.getElementById("page"));
 
     </script>
     <?php
