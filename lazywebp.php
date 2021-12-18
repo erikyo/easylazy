@@ -16,20 +16,37 @@ if ( !defined( 'ABSPATH' ) ) {
 add_filter('the_content', 'lazywebp_filter');
 add_filter('wp_footer', 'lazywebp_filter');
 add_filter('post_thumbnail_html', 'lazywebp_filter');
-add_action("wp_body_open" , 'lazywebp_lazyload', 1);
+add_action("wp_footer" , 'lazywebp_lazyload', 1);
 
 function lazywebp_filter($content) {
     if (is_admin()) return $content;
+
+    // replace src with data-src
     $content = preg_replace( '/(\s)src=/', ' src=\'\' data-src=', $content );
+
+    // replace srcset with data-srcset
     $content = preg_replace( '/(\s)srcset=/', ' srcset=\'\' data-srcset=', $content );
-    return $content;
+
+    // replace background-image with data-lazy-bg + style without the background
+    $content = preg_replace_callback(
+        '/style=(?:"|\')[^<>]*?background\-image:(?: {1,}|)url(?: {1,}|)\([\'|"]?([^"\')]*)[\'|"]?\)/',
+        function ($match) use ($content) {
+            // the lazy background property
+            $lazy_bg = 'data-background="url(\''.$match[1].'\')" ';
+            // replace the original background with empty quotes
+            return $lazy_bg . str_replace($match[1], '', $match[0]);
+        },
+        $content
+    );
+
+   return $content;
 }
 
 function lazywebp_lazyload() {
     ?>
     <style>
       .lazyload{filter: opacity(0)}
-      img.lazyloaded{animation: lazyFadeIn linear .2s;filter: opacity(1)}
+      img.lazyloaded{animation: lazyFadeIn linear .02s;filter: opacity(1)}
       @keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}
     </style>
     <script>
@@ -74,26 +91,51 @@ function lazywebp_lazyload() {
 
       async function loadImage(elem) {
 
-        if (!elem.dataset.src) throw new Error('missing img src for ', elem);
+        if (!elem.dataset.background && !elem.dataset.src) throw new Error('EazyLazy - Missing source for ' + elem);
+
+        const sourceUrl = elem.dataset.src || elem.dataset.background;
 
         // store the file extension
-
         const suffix = hasWebpSupport ? '.webp' : '';
 
-        if ( elem.classList.contains('lazyload') || !elem.getAttribute('src') || !elem.complete ) {
+        // load the background image
+        if (elem.dataset.background) {
+
+          const fileExt = elem.dataset.background.split('.').pop().split(/'|"|\)/).shift();
 
           elem.classList.add('lazyload');
+          const backgroundUrlWebp = elem.dataset.background.replace(fileExt, fileExt + suffix);
+
+          await imageExists(backgroundUrlWebp)
+            .then(() => {
+              elem.style.backgroundImage = backgroundUrlWebp;
+            })
+            .catch((e) => {
+              // there is no webp copy
+              elem.classList.add('no-webp-background');
+              elem.style.backgroundImage = elem.dataset.background;
+            })
+
+            elem.classList.add('lazyloaded');
+            elem.classList.remove('lazyload');
+            delete elem.dataset.background;
+
+          // load the image src and srcset
+        } else if (elem.classList.contains('lazyload') || !elem.getAttribute('src') || !elem.complete) {
+
           const fileExt = elem.dataset.src.split('.').pop();
+
+          elem.classList.add('lazyload');
 
           await imageExists(elem.dataset.src, suffix)
             .then(() => {
               // hijack the request to webp image format if available
               if (suffix !== '') {
                 elem.src = elem.dataset.src + suffix;
-                elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll( "." + fileExt, '.'+fileExt+suffix ) : '';
+                elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll("." + fileExt, '.' + fileExt + suffix) : '';
               } else {
                 elem.src = elem.dataset.src;
-                elem.srcset = elem.dataset.srcset;
+                if (elem.dataset.srcset) elem.srcset = elem.dataset.srcset;
               }
               // add a class once the image has been fully loaded
               imageLoaded(elem).then(() => imageUnveil(elem))
@@ -105,8 +147,8 @@ function lazywebp_lazyload() {
               // there is no webp copy
               elem.classList.add('no-webp');
 
-              elem.src = elem.dataset.src;
-              elem.srcset = elem.dataset.srcset;
+              if (elem.dataset.src) elem.src = elem.dataset.src;
+              if (elem.dataset.srcset) elem.srcset = elem.dataset.srcset;
 
               imageLoaded(elem).then(() => imageUnveil(elem))
             })
@@ -117,7 +159,8 @@ function lazywebp_lazyload() {
       function initImageObserver(entries, observer) {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            loadImage(entry.target).then( () => observer.unobserve(entry.target) );
+            loadImage(entry.target)
+              .then( () => observer.unobserve(entry.target) );
           }
         });
       }
@@ -160,7 +203,7 @@ function lazywebp_lazyload() {
       // the image lazyload initializer
       function lazyload(page, excludedCount = 2) {
 
-        const imgCollection = page.querySelectorAll("[data-src]");
+        const imgCollection = page.querySelectorAll("[data-src], [data-background]");
 
         // start the intersection observer
         if ('IntersectionObserver' in window) {
@@ -180,10 +223,10 @@ function lazywebp_lazyload() {
 
               observer.observe(image);
             }
-
-            // watch for new images added to the DOM
-            pageWatcher(page);
           });
+
+          // watch for new images added to the DOM
+          pageWatcher(page);
 
         } else {
           // intersection observer is not supported, just load all the images
@@ -193,9 +236,8 @@ function lazywebp_lazyload() {
       }
 
       // on windows load trigger the lazyload
-      document.addEventListener('DOMContentLoaded', () => {
-        lazyload(document.getElementById("page"))
-      });
+
+      lazyload(document.getElementById("page"))
 
     </script>
     <?php
