@@ -67,37 +67,36 @@ function lazywebp_lazyload() {
       @keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}
     </style>
     <script async>
+      "use strict";
 
-      hasWebpSupport = e => document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
+      const hasWebpSupport = function (e) {
+        return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
+      }; // check if the image exists
 
-      // check if the image exists
+
       async function imageExists(url, suffix = '') {
-        if (url) return new Promise((resolve, reject) => {
+        if (url) return new Promise(function (resolve, reject) {
           let image = new Image();
           image.src = url + suffix;
-          image.onload = () => resolve("complete");
-          image.onloadstart = () => resolve("loading");
-          image.onerror = () => reject(`unable to locate ${url+suffix}`)
+          image.alt = "lazyload";
+          image.onload = function () {return resolve("complete")};
+          image.onloadstart = function () {return resolve("loading")};
+          image.onerror = function () {return reject(`unable to locate ${url + suffix}`)};
         });
-      }
+      } // check if the image has been loaded
 
-      // check if the image has been loaded
+
       async function imageLoaded(image) {
-
         const imageUrl = image.src;
-
-        if (imageUrl) return new Promise((resolve, reject) => {
-
+        if (imageUrl) return new Promise(function (resolve, reject) {
           let proxy = new Image();
-
           proxy.src = imageUrl;
-          proxy.onload = () => {resolve()}
-          proxy.onerror = () => {reject()}
-
+          proxy.onload = function () {resolve()};
+          proxy.onerror = function () {reject()};
         });
-      }
+      } // show the image and remove the temp classes
 
-      // show the image and remove the temp classes
+
       function imageUnveil(elem) {
         elem.classList.add('lazyloaded');
         elem.classList.remove('lazyload');
@@ -105,79 +104,72 @@ function lazywebp_lazyload() {
         delete elem.dataset.srcset;
       }
 
-
       async function loadImage(elem) {
-
         if (!elem.dataset.background && !elem.dataset.src) throw new Error('EazyLazy - Missing source for ' + elem);
 
-        const sourceUrl = elem.dataset.src || elem.dataset.background;
+        const suffix = hasWebpSupport ? '.webp' : ''; // load the background image
 
-        // store the file extension
-        const suffix = hasWebpSupport ? '.webp' : '';
-
-        // load the background image
         if (elem.dataset.background) {
 
-          const fileExt = elem.dataset.background.split('.').pop().split(/'|"|\)/).shift();
-
           elem.classList.add('lazyload');
+
+          const fileExt = elem.dataset.background.split('.').pop().split(/'|"|\)/).shift();
           const backgroundUrlWebp = elem.dataset.background.replace(fileExt, fileExt + suffix);
 
-          await imageExists(backgroundUrlWebp)
-            .then(() => {
-              elem.style.backgroundImage = backgroundUrlWebp;
-            })
-            .catch((e) => {
-              // there is no webp copy
-              elem.classList.add('no-webp-background');
-              elem.style.backgroundImage = elem.dataset.background;
-            })
+          await imageExists(backgroundUrlWebp).then(function () {
 
-            elem.classList.add('lazyloaded');
-            elem.classList.remove('lazyload');
-            delete elem.dataset.background;
+            elem.style.backgroundImage = backgroundUrlWebp;
+          }).catch(function (e) {
 
-          // load the image src and srcset
-        } else if (elem.classList.contains('lazyload') || !elem.getAttribute('src') || !elem.complete) {
+            // there is no webp copy
+            elem.classList.add('no-webp-background');
+            elem.style.backgroundImage = elem.dataset.background;
+          });
+
+          elem.classList.add('lazyloaded');
+          elem.classList.remove('lazyload');
+
+          delete elem.dataset.background; // load the image src and srcset
+
+        } else if (elem.classList.contains('lazyload') || !elem.getAttribute('src')) {
 
           const fileExt = elem.dataset.src.split('.').pop();
-
           elem.classList.add('lazyload');
 
-          await imageExists(elem.dataset.src, suffix)
-            .then(() => {
-              // hijack the request to webp image format if available
-              if (suffix !== '') {
-                elem.src = elem.dataset.src + suffix;
-                elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll("." + fileExt, '.' + fileExt + suffix) : '';
-              } else {
-                elem.src = elem.dataset.src;
-                if (elem.dataset.srcset) elem.srcset = elem.dataset.srcset;
-              }
-              // add a class once the image has been fully loaded
-              imageLoaded(elem).then(() => imageUnveil(elem))
-            })
-            .catch((e) => {
-
-              if (elem.dataset.src === e) return true;
-
-              // there is no webp copy
-              elem.classList.add('no-webp');
-
-              if (elem.dataset.src) elem.src = elem.dataset.src;
+          await imageExists(elem.dataset.src, suffix).then(function () {
+            // hijack the request to webp image format if available
+            if (suffix !== '') {
+              elem.src = elem.dataset.src + suffix;
+              elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll("." + fileExt, '.' + fileExt + suffix) : '';
+            } else {
+              elem.src = elem.dataset.src;
               if (elem.dataset.srcset) elem.srcset = elem.dataset.srcset;
+            } // add a class once the image has been fully loaded
 
-              imageLoaded(elem).then(() => imageUnveil(elem))
-            })
+
+            imageLoaded(elem).then(function () {
+              return imageUnveil(elem);
+            });
+          }).catch(function (e) {
+            if (elem.dataset.src === e) return true; // there is no webp copy
+
+            elem.classList.add('no-webp');
+            if (elem.dataset.src) elem.src = elem.dataset.src;
+            if (elem.dataset.srcset) elem.srcset = elem.dataset.srcset;
+            imageLoaded(elem).then(function () {
+              return imageUnveil(elem);
+            });
+          });
         }
-      }
+      } // collect images that needs to be loaded
 
-      // collect images that needs to be loaded
+
       function initImageObserver(entries, observer) {
-        entries.forEach(entry => {
+        entries.forEach(function (entry) {
           if (entry.isIntersecting) {
-            loadImage(entry.target)
-              .then( () => observer.unobserve(entry.target) );
+            loadImage(entry.target).then(function () {
+              return observer.unobserve(entry.target);
+            });
           }
         });
       }
@@ -195,61 +187,62 @@ function lazywebp_lazyload() {
             }
 
             var imgs = node.querySelectorAll("[data-src]");
-            if (imgs.length) {
-              imgs.forEach( img => loadImage(img) )
-            }
-          })
-        })
-      };
 
-      // loop trough all nodes and fire a callback
+            if (imgs.length) {
+              imgs.forEach(function (img) {
+                return loadImage(img);
+              });
+            }
+          });
+        });
+      }; // loop trough all nodes and fire a callback
+
+
       function forEachNode(nodeList, callback) {
-        for ( let i = 0, n = nodeList.length; i < n; i++ ) {
+        for (let i = 0, n = nodeList.length; i < n; i++) {
           callback(nodeList[i], i, nodeList);
         }
-      }
+      } // the page mutation observer
 
-      // the page mutation observer
-      const interceptor = page => {
+
+      const interceptor = function (page) {
         // Create an observer instance linked to the callback function
-        const mutationObserver = new MutationObserver(initMutationObserver);
-        // Start observing the target node for configured mutations
-        mutationObserver.observe(page, {attributes: false, childList: true, subtree: true});
-      };
+        const mutationObserver = new MutationObserver(initMutationObserver); // Start observing the target node for configured mutations
 
-      // the image lazyload initializer
+        mutationObserver.observe(page, {
+          attributes: false,
+          childList: true,
+          subtree: true
+        });
+      }; // the image lazyload initializer
+
+
       function lazyload(page, excludedCount = 2) {
+        const imgCollection = page.querySelectorAll("[data-src], [data-background]"); // start the intersection observer
 
-        const imgCollection = page.querySelectorAll("[data-src], [data-background]");
-
-        // start the intersection observer
         if ('IntersectionObserver' in window) {
-
           const observer = new IntersectionObserver(initImageObserver);
-
-          imgCollection.forEach((image, index) => {
-
+          imgCollection.forEach(function (image, index) {
             if (index < excludedCount) {
-                loadImage(image);
+              loadImage(image);
             } else {
               // set a proxy while preloading
               if (!image.getAttribute('src') && !image.complete) {
-                image.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${image.naturalWidth} ${image.naturalHeight}"%3E%3C/svg%3E`
+                image.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${image.naturalWidth} ${image.naturalHeight}"%3E%3C/svg%3E`;
                 image.classList.add('lazyload');
               }
 
               observer.observe(image);
             }
-          });
+          }); // watch for new images added to the DOM
 
-          // watch for new images added to the DOM
           interceptor(page);
-
         } else {
           // intersection observer is not supported, just load all the images
-          imgCollection.forEach(image => loadImage(image));
+          imgCollection.forEach(function (image) {
+            return loadImage(image);
+          });
         }
-
       }
 
       // on script load trigger immediately the lazyload
