@@ -16,7 +16,6 @@ if ( !defined( 'ABSPATH' ) ) {
 // IMAGES OPTIMIZATIONS
 add_filter('the_content', 'lazywebp_filter');
 add_filter('wp_footer', 'lazywebp_filter');
-add_filter('post_thumbnail_html', 'lazywebp_filter');
 
 add_action("wp_footer" , 'lazywebp_lazyload', 1);
 
