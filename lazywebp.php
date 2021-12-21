@@ -217,7 +217,7 @@ function lazywebp_lazyload() {
       }; // the image lazyload initializer
 
 
-      function lazyload(page, excludedCount = 2) {
+      function lazyload(page, excludedCount = 0) {
         const imgCollection = page.querySelectorAll("[data-src], [data-background]"); // start the intersection observer
 
         if ('IntersectionObserver' in window) {
