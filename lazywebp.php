@@ -13,28 +13,64 @@ if ( !defined( 'ABSPATH' ) ) {
     die( 'Sorry, this file cannot be accessed directly.' );
 }
 
-// IMAGES OPTIMIZATIONS
+// HIJACK IMAGE SRC and EXTRACT BACKGROUNDS
 add_filter('the_content', 'lazywebp_filter');
 add_filter('wp_footer', 'lazywebp_filter');
 
+// IMAGES OPTIMIZATIONS
 add_action("wp_footer" , 'lazywebp_lazyload', 1);
 
-add_filter('max_srcset_image_width', function() { return 1000; });
 
-// JS DEFER
+/*
+* WP performance tweaks
+*/
 add_filter( 'script_loader_tag', 'lazywebp_defer_js', 20 );
+add_filter( 'script_loader_src', 'lazywebp_remove_script_version', 20 );
+add_filter( 'style_loader_src', 'lazywebp_remove_script_version', 20 );
+add_action( 'pre_ping', 'no_self_ping' );
 
+add_filter('max_srcset_image_width', function() { return 700; });
+
+/**
+* JS Defer
+*/
 function lazywebp_defer_js( $url ) {
     if (
-       is_user_logged_in() ||
-       false === strpos( $url, '.js' ) ||
-       strpos( $url, 'jquery.js' ) ||
-       strpos( $url, 'jquery-migrate.js' )
+        is_user_logged_in() ||
+        false === strpos( $url, '.js' ) ||
+        strpos( $url, 'jquery.js' ) ||
+        strpos( $url, 'jquery-migrate.js' )
     ) return $url;
 
     return str_replace( ' src', ' defer src', $url );
 }
 
+/**
+ * Remove queries from static resources
+*/
+function lazywebp_remove_script_version( $src ) {
+    $parts = explode( '?ver', $src );
+    return $parts[0];
+}
+
+/**
+ * Disable wordpress self ping
+ */
+function no_self_ping( &$links ) {
+    $home = get_option( 'home' );
+    foreach ( $links as $l => $link )
+        if ( 0 === strpos( $link, $home ) )
+            unset($links[$l]);
+}
+
+
+
+/**
+ * filters the content and replaces src with data-src (and srcset as well) and extracts the background from the inline css
+ * @param $content
+ *
+ * @return array|mixed|string|string[]|null
+ */
 function lazywebp_filter($content) {
     if (is_admin()) return $content;
 
