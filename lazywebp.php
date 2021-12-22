@@ -17,6 +17,9 @@ if ( !defined( 'ABSPATH' ) ) {
 add_filter('the_content', 'lazywebp_filter');
 add_filter('wp_footer', 'lazywebp_filter');
 
+// hijack original image to webp using a filter (also remove loading="lazy")
+add_filter( 'post_thumbnail_html', 'lazywebp_post_thumbnails', 10, 3 );
+
 // IMAGES OPTIMIZATIONS
 add_action("wp_footer" , 'lazywebp_lazyload', 1);
 
@@ -93,6 +96,22 @@ function lazywebp_filter($content) {
     );
 
    return $content;
+}
+
+
+function lazywebp_post_thumbnails( $html, $post_id, $post_image_id ) {
+
+    $attached_file = get_attached_file($post_image_id);
+    preg_match('/\.(jpg|jpeg|png|gif)/i', $attached_file, $extension );
+    $extension = $extension[1];
+
+    if (in_array($extension, array("png", "jpg", "gif"))) {
+        if (file_exists($attached_file . ".webp")) {
+            $html = str_replace(".".$extension, ".".$extension. ".webp", $html);
+        }
+    }
+
+    return str_replace('loading="lazy"', "", $html);
 }
 
 function lazywebp_lazyload() {
