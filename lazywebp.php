@@ -75,10 +75,10 @@ function lazywebp_filter($content) {
     if (is_admin()) return $content;
 
     // replace src with data-src
-    $content = preg_replace( '/(\s)src=/', ' src=\'\' data-src=', $content );
+    $content = preg_replace( '/(?:\s)src=("(?:[^\s]+.(?:jpg|jpeg|png|gif))")/', ' src=\'\' data-src=\\1', $content );
 
     // replace srcset with data-srcset
-    $content = preg_replace( '/(\s)srcset=/', ' srcset=\'\' data-srcset=', $content );
+    $content = preg_replace( '/(?:\s)srcset=("(?:[^"]+.(?:jpg|jpeg|png|gif)).+")/', ' srcset=\'\' data-srcset=\\1', $content );
 
     // replace background-image with data-lazy-bg + style without the background
     $content = preg_replace_callback(
@@ -97,11 +97,7 @@ function lazywebp_filter($content) {
 
 function lazywebp_lazyload() {
     ?>
-    <style>
-      .lazyload{filter: opacity(0)}
-      .lazyloaded{animation: lazyFadeIn linear .02s;filter: opacity(1)}
-      @keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}
-    </style>
+    <style>.lazyload{filter: opacity(0)}.lazyloaded{animation: lazyFadeIn linear .02s;filter: opacity(1)}@keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}</style>
     <script async>
       "use strict";
 
