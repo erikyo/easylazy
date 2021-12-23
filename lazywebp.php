@@ -49,6 +49,8 @@ add_action( 'pre_ping', 'no_self_ping' );
 
 add_filter('max_srcset_image_width', function() { return 700; });
 
+
+
 /**
 * JS Defer
 */
@@ -56,8 +58,10 @@ function lazywebp_defer_js( $url ) {
     if (
         is_user_logged_in() ||
         false === strpos( $url, '.js' ) ||
-        strpos( $url, 'jquery.js' ) ||
-        strpos( $url, 'jquery-migrate.js' )
+        strpos( $url, 'jquery.min.js' ) ||
+        strpos( $url, 'underscore' ) ||
+        strpos( $url, 'backbone' ) ||
+        strpos( $url, 'jquery-migrate.min.js' )
     ) return $url;
 
     return str_replace( ' src', ' defer src', $url );
@@ -144,25 +148,14 @@ function lazywebp_filter($content) {
    return $content;
 }
 
-
-function lazywebp_post_thumbnails( $html, $post_id, $post_image_id ) {
-
-    $attached_file = get_attached_file($post_image_id);
-    preg_match('/\.('.implode('|',LAZYWEBP_ENABLED_EXTENSIONS).')/i', $attached_file, $extension );
-    $extension = (!empty($extension[1])) ? $extension[1] : false;
-
-    if ($extension && in_array($extension, LAZYWEBP_ENABLED_EXTENSIONS )) {
-        if (file_exists($attached_file . ".webp")) {
-            $html = str_replace(".".$extension, ".".$extension. ".webp", $html);
-        }
-    }
-
-    return str_replace('loading="lazy"', "", $html);
-}
-
 function lazywebp_lazyload() {
+    $lazyload_style = '.lazyload{filter: opacity(0)}.lazyloaded{animation: lazyFadeIn linear .02s;filter: opacity(1)}@keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}';
+    $admin_style = '.no-webp, .no-webp-background {box-shadow: 0 0 10px 20px red;position: relative;z-index: 1;outline: 7px dotted purple;}';
     ?>
-    <style>.lazyload{filter: opacity(0)}.lazyloaded{animation: lazyFadeIn linear .02s;filter: opacity(1)}@keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}</style>
+    <style><?php
+        echo $lazyload_style;
+        if (is_user_logged_in()) echo $admin_style;
+    ?></style>
     <script async>
         "use strict";
 
