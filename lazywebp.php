@@ -13,6 +13,10 @@ if ( !defined( 'ABSPATH' ) ) {
     die( 'Sorry, this file cannot be accessed directly.' );
 }
 
+if ( !defined( 'LAZYWEBP_ENABLED_EXTENSIONS' ) ) {
+    define( 'LAZYWEBP_ENABLED_EXTENSIONS', array( 'png', 'jpg', 'gif' ) );
+}
+
 // HIJACK IMAGE SRC and EXTRACT BACKGROUNDS
 add_filter('the_content', 'lazywebp_filter');
 add_filter('wp_footer', 'lazywebp_filter');
@@ -78,10 +82,10 @@ function lazywebp_filter($content) {
     if (is_admin()) return $content;
 
     // replace src with data-src
-    $content = preg_replace( '/(?:\s)src=("(?:[^\s]+.(?:jpg|jpeg|png|gif))")/', ' src=\'\' data-src=\\1', $content );
+    $content = preg_replace( '/(?:\s)src=("(?:[^\s]+.(?:'.implode('|',LAZYWEBP_ENABLED_EXTENSIONS).'))")/', ' src=\'\' data-src=\\1', $content );
 
     // replace srcset with data-srcset
-    $content = preg_replace( '/(?:\s)srcset=("(?:[^"]+.(?:jpg|jpeg|png|gif)).+")/', ' srcset=\'\' data-srcset=\\1', $content );
+    $content = preg_replace( '/(?:\s)srcset=("(?:[^"]+.(?:'.implode('|',LAZYWEBP_ENABLED_EXTENSIONS).')).+")/', ' srcset=\'\' data-srcset=\\1', $content );
 
     // replace background-image with data-lazy-bg + style without the background
     $content = preg_replace_callback(
@@ -102,10 +106,10 @@ function lazywebp_filter($content) {
 function lazywebp_post_thumbnails( $html, $post_id, $post_image_id ) {
 
     $attached_file = get_attached_file($post_image_id);
-    preg_match('/\.(jpg|jpeg|png|gif)/i', $attached_file, $extension );
-    $extension = $extension[1];
+    preg_match('/\.('.implode('|',LAZYWEBP_ENABLED_EXTENSIONS).')/i', $attached_file, $extension );
+    $extension = (!empty($extension[1])) ? $extension[1] : false;
 
-    if (in_array($extension, array("png", "jpg", "gif"))) {
+    if ($extension && in_array($extension, LAZYWEBP_ENABLED_EXTENSIONS )) {
         if (file_exists($attached_file . ".webp")) {
             $html = str_replace(".".$extension, ".".$extension. ".webp", $html);
         }
@@ -117,7 +121,7 @@ function lazywebp_post_thumbnails( $html, $post_id, $post_image_id ) {
 function lazywebp_lazyload() {
     ?>
     <style>.lazyload{filter: opacity(0)}.lazyloaded{animation: lazyFadeIn linear .02s;filter: opacity(1)}@keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}</style>
-    <script async>
+    <script>
       "use strict";
 
       const hasWebpSupport = function (e) {
@@ -363,12 +367,27 @@ function lazywebp_save_webp_copy( $metadata, $attachment_id ) {
             }
             break;
 
+	    case 'gif':
+		    foreach ( $file_collection as $value ) {
+
+			    $image = imagecreatefromgif( $basedir . '/' . $path . '/' . $value );
+			    imagepalettetotruecolor( $image );
+			    imagealphablending( $image, true );
+			    imagesavealpha( $image, true );
+
+			    imagewebp( $image, $basedir . '/' . $path . '/' . $value . '.webp', 90 );
+
+			    imagedestroy( $image );
+		    }
+		    break;
+
         default:
             return false;
     }
 
     return $metadata;
 }
+
 add_filter( 'wp_generate_attachment_metadata', 'lazywebp_save_webp_copy', 30, 2 );
 
 function lazywebp_delete_webp_copy( $post_id ) {
