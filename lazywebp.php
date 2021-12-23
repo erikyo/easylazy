@@ -329,8 +329,13 @@ function lazywebp_lazyload() {
                     } else {
                         // set a proxy while preloading
                         if (!image.getAttribute('src')) {
-                            image.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${image.naturalWidth} ${image.naturalHeight}"%3E%3C/svg%3E`;
+
                             image.classList.add('lazyload');
+
+                            const imageWidth = image.getAttribute('width') || 0;
+                            const imageHeight = image.getAttribute('height') || 0;
+
+                            image.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}" viewBox="0 0 ${imageWidth} ${imageHeight}"%3E%3C/svg%3E`;
                         }
 
                         observer.observe(image);
