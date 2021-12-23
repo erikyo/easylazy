@@ -14,7 +14,7 @@ if ( !defined( 'ABSPATH' ) ) {
 }
 
 if ( !defined( 'LAZYWEBP_ENABLED_EXTENSIONS' ) ) {
-    define( 'LAZYWEBP_ENABLED_EXTENSIONS', array( 'png', 'jpg', 'gif' ) );
+    define( 'LAZYWEBP_ENABLED_EXTENSIONS', array( 'png', 'jpg', 'jpeg', 'gif' ) );
 }
 
 // HIJACK IMAGE SRC and EXTRACT BACKGROUNDS
@@ -121,187 +121,200 @@ function lazywebp_post_thumbnails( $html, $post_id, $post_image_id ) {
 function lazywebp_lazyload() {
     ?>
     <style>.lazyload{filter: opacity(0)}.lazyloaded{animation: lazyFadeIn linear .02s;filter: opacity(1)}@keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}</style>
-    <script>
-      "use strict";
+    <script async>
+        "use strict";
 
-      const hasWebpSupport = function (e) {
-        return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
-      }; // check if the image exists
+        const hasWebpSupport = function (e) {
+            return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
+        };
+
+        // check if the image exists
+        async function imageExists(url, suffix = '') {
+            if (url) return new Promise(function (resolve, reject) {
+                let image = new Image();
+                image.src = url + suffix;
+                image.alt = "lazyload";
+                image.onload = function () {return resolve("complete")};
+                image.onloadstart = function () {return resolve("loading")};
+                image.onerror = function () {return reject(`unable to locate ${url + suffix}`)};
+            });
+        }
+
+        // check if the image has been loaded
+        async function imageLoaded(image) {
+            const imageUrl = image.src;
+            if (imageUrl) return new Promise(function (resolve, reject) {
+                let proxy = new Image();
+                proxy.src = imageUrl;
+                proxy.onload = function () {resolve()};
+                proxy.onerror = function () {reject()};
+            });
+        }
+
+        // show the image and remove the temp classes
+        function imageUnveil(elem) {
+            elem.classList.add('lazyloaded');
+            elem.classList.remove('lazyload');
+            delete elem.dataset.src;
+            delete elem.dataset.srcset;
+        }
+
+        async function loadImage(elem) {
+            if (!elem.dataset.background && !elem.dataset.src) throw new Error('EazyLazy - Missing source for ' + elem);
+
+            const suffix = hasWebpSupport ? '.webp' : '';
+
+            // load the background image
+            if (elem.dataset.background) {
+
+                elem.classList.add('lazyload');
+
+                const fileExt = elem.dataset.background.split('.').pop().split(/'|"|\)/).shift();
+                const backgroundUrlWebp = elem.dataset.background.replace(fileExt, fileExt + suffix);
+
+                await imageExists(backgroundUrlWebp).then(function () {
+
+                    elem.style.backgroundImage = backgroundUrlWebp;
+                }).catch(function (e) {
+
+                    // there is no webp copy
+                    elem.classList.add('no-webp-background');
+                    elem.style.backgroundImage = elem.dataset.background;
+                });
+
+                elem.classList.add('lazyloaded');
+                elem.classList.remove('lazyload');
+
+                delete elem.dataset.background;
 
 
-      async function imageExists(url, suffix = '') {
-        if (url) return new Promise(function (resolve, reject) {
-          let image = new Image();
-          image.src = url + suffix;
-          image.alt = "lazyload";
-          image.onload = function () {return resolve("complete")};
-          image.onloadstart = function () {return resolve("loading")};
-          image.onerror = function () {return reject(`unable to locate ${url + suffix}`)};
-        });
-      } // check if the image has been loaded
+            } else if (elem.classList.contains('lazyload') || !elem.getAttribute('src')) {
+
+                // load the image src and srcset
+                const fileExt = elem.dataset.src.split('.').pop();
+                elem.classList.add('lazyload');
+
+                await imageExists(elem.dataset.src, suffix).then(function () {
+                    // hijack the request to webp image format if available
+                    if (suffix !== '') {
+                        elem.src = elem.dataset.src + suffix;
+                        elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll("." + fileExt, '.' + fileExt + suffix) : '';
+                    } else {
+                        elem.src = elem.dataset.src;
+                        if (elem.dataset.srcset) elem.srcset = elem.dataset.srcset;
+                    }
+
+                    // add a class once the image has been fully loaded
+                    imageLoaded(elem).then(function () {
+                        return imageUnveil(elem);
+                    });
+                }).catch(function (e) {
+                    if (elem.dataset.src === e) return true;
+
+                    elem.classList.add('no-webp'); // there is no webp copy
+
+                    if (elem.dataset.src) elem.src = elem.dataset.src;
+                    if (elem.dataset.srcset) elem.srcset = elem.dataset.srcset;
+                    imageLoaded(elem).then(function () {
+                        return imageUnveil(elem);
+                    });
+                });
+            }
+        }
+
+        // collect images that needs to be loaded
+        function initImageObserver(entries, observer) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    loadImage(entry.target).then(function () {
+                        return observer.unobserve(entry.target);
+                    });
+                }
+            });
+        }
+
+        const initMutationObserver = function (mutationsList, mutationObserver) {
+            //for every mutation
+            mutationsList.forEach(function (mutation) {
+                //for every added element
+                mutation.addedNodes.forEach(function (node) {
+                    // Check if we appended a node type that isn't
+                    // an element that we can search for images inside,
+                    // like a text node.
+                    if (typeof node.getElementsByTagName !== 'function') {
+                        return;
+                    }
+
+                    var imgs = node.querySelectorAll("[data-src]");
+
+                    if (imgs.length) {
+                        imgs.forEach(function (img) {
+                            return loadImage(img);
+                        });
+                    }
+                });
+            });
+        };
+
+        // loop trough all nodes and fire a callback
+        function forEachNode(nodeList, callback) {
+            for (let i = 0, n = nodeList.length; i < n; i++) {
+                callback(nodeList[i], i, nodeList);
+            }
+        }
+
+        // the page mutation observer
+        const interceptor = function (page) {
+            // Create an observer instance linked to the callback function
+            const mutationObserver = new MutationObserver(initMutationObserver); // Start observing the target node for configured mutations
+
+            mutationObserver.observe(page, {
+                attributes: false,
+                childList: true,
+                subtree: true
+            });
+        };
+
+        // the image lazyload initializer
+        function lazyload(page, excludedCount = 0) {
+            const imgCollection = page.querySelectorAll("[data-src], [data-background]"); // start the intersection observer
+
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver(initImageObserver, {
+                    rootMargin: "0px 0px 256px 0px"
+                });
+                imgCollection.forEach(function (image, index) {
+                    if (index < excludedCount) {
+                        loadImage(image);
+                    } else {
+                        // set a proxy while preloading
+                        if (!image.getAttribute('src')) {
+                            image.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${image.naturalWidth} ${image.naturalHeight}"%3E%3C/svg%3E`;
+                            image.classList.add('lazyload');
+                        }
+
+                        observer.observe(image);
+                    }
+                });
+
+                // watch for new images added to the DOM
+                document.addEventListener("load", function() {
+                    interceptor(page)
+                });
 
 
-      async function imageLoaded(image) {
-        const imageUrl = image.src;
-        if (imageUrl) return new Promise(function (resolve, reject) {
-          let proxy = new Image();
-          proxy.src = imageUrl;
-          proxy.onload = function () {resolve()};
-          proxy.onerror = function () {reject()};
-        });
-      } // show the image and remove the temp classes
-
-
-      function imageUnveil(elem) {
-        elem.classList.add('lazyloaded');
-        elem.classList.remove('lazyload');
-        delete elem.dataset.src;
-        delete elem.dataset.srcset;
-      }
-
-      async function loadImage(elem) {
-        if (!elem.dataset.background && !elem.dataset.src) throw new Error('EazyLazy - Missing source for ' + elem);
-
-        const suffix = hasWebpSupport ? '.webp' : ''; // load the background image
-
-        if (elem.dataset.background) {
-
-          elem.classList.add('lazyload');
-
-          const fileExt = elem.dataset.background.split('.').pop().split(/'|"|\)/).shift();
-          const backgroundUrlWebp = elem.dataset.background.replace(fileExt, fileExt + suffix);
-
-          await imageExists(backgroundUrlWebp).then(function () {
-
-            elem.style.backgroundImage = backgroundUrlWebp;
-          }).catch(function (e) {
-
-            // there is no webp copy
-            elem.classList.add('no-webp-background');
-            elem.style.backgroundImage = elem.dataset.background;
-          });
-
-          elem.classList.add('lazyloaded');
-          elem.classList.remove('lazyload');
-
-          delete elem.dataset.background; // load the image src and srcset
-
-        } else if (elem.classList.contains('lazyload') || !elem.getAttribute('src')) {
-
-          const fileExt = elem.dataset.src.split('.').pop();
-          elem.classList.add('lazyload');
-
-          await imageExists(elem.dataset.src, suffix).then(function () {
-            // hijack the request to webp image format if available
-            if (suffix !== '') {
-              elem.src = elem.dataset.src + suffix;
-              elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll("." + fileExt, '.' + fileExt + suffix) : '';
             } else {
-              elem.src = elem.dataset.src;
-              if (elem.dataset.srcset) elem.srcset = elem.dataset.srcset;
-            } // add a class once the image has been fully loaded
 
-
-            imageLoaded(elem).then(function () {
-              return imageUnveil(elem);
-            });
-          }).catch(function (e) {
-            if (elem.dataset.src === e) return true; // there is no webp copy
-
-            elem.classList.add('no-webp');
-            if (elem.dataset.src) elem.src = elem.dataset.src;
-            if (elem.dataset.srcset) elem.srcset = elem.dataset.srcset;
-            imageLoaded(elem).then(function () {
-              return imageUnveil(elem);
-            });
-          });
-        }
-      } // collect images that needs to be loaded
-
-
-      function initImageObserver(entries, observer) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            loadImage(entry.target).then(function () {
-              return observer.unobserve(entry.target);
-            });
-          }
-        });
-      }
-
-      const initMutationObserver = function (mutationsList, mutationObserver) {
-        //for every mutation
-        mutationsList.forEach(function (mutation) {
-          //for every added element
-          mutation.addedNodes.forEach(function (node) {
-            // Check if we appended a node type that isn't
-            // an element that we can search for images inside,
-            // like a text node.
-            if (typeof node.getElementsByTagName !== 'function') {
-              return;
+                // intersection observer is not supported, just load all the images
+                imgCollection.forEach(function (image) {
+                    return loadImage(image);
+                });
             }
-
-            var imgs = node.querySelectorAll("[data-src]");
-
-            if (imgs.length) {
-              imgs.forEach(function (img) {
-                return loadImage(img);
-              });
-            }
-          });
-        });
-      }; // loop trough all nodes and fire a callback
-
-
-      function forEachNode(nodeList, callback) {
-        for (let i = 0, n = nodeList.length; i < n; i++) {
-          callback(nodeList[i], i, nodeList);
         }
-      } // the page mutation observer
 
+        // on script load trigger immediately the lazyload
+        lazyload(document.getElementById("page"));
 
-      const interceptor = function (page) {
-        // Create an observer instance linked to the callback function
-        const mutationObserver = new MutationObserver(initMutationObserver); // Start observing the target node for configured mutations
-
-        mutationObserver.observe(page, {
-          attributes: false,
-          childList: true,
-          subtree: true
-        });
-      }; // the image lazyload initializer
-
-
-      function lazyload(page, excludedCount = 0) {
-        const imgCollection = page.querySelectorAll("[data-src], [data-background]"); // start the intersection observer
-
-        if ('IntersectionObserver' in window) {
-          const observer = new IntersectionObserver(initImageObserver);
-          imgCollection.forEach(function (image, index) {
-            if (index < excludedCount) {
-              loadImage(image);
-            } else {
-              // set a proxy while preloading
-              if (!image.getAttribute('src') && !image.complete) {
-                image.src = `data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${image.naturalWidth} ${image.naturalHeight}"%3E%3C/svg%3E`;
-                image.classList.add('lazyload');
-              }
-
-              observer.observe(image);
-            }
-          }); // watch for new images added to the DOM
-
-          interceptor(page);
-        } else {
-          // intersection observer is not supported, just load all the images
-          imgCollection.forEach(function (image) {
-            return loadImage(image);
-          });
-        }
-      }
-
-      // on script load trigger immediately the lazyload
-      lazyload(document.getElementById("page"));
 
     </script>
     <?php
