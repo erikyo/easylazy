@@ -29,7 +29,7 @@ add_filter('the_content', 'lazywebp_filter');
 add_filter('wp_footer', 'lazywebp_filter');
 
 // hijack original image to webp using a filter (also remove loading="lazy")
-add_filter( 'post_thumbnail_html', 'lazywebp_post_thumbnails', 10, 3 );
+add_filter( 'post_thumbnail_html', 'lazywebp_post_thumbnails', 10, 2 );
 
 // IMAGES OPTIMIZATIONS
 add_action("wp_footer" , 'lazywebp_lazyload', 1);
@@ -81,6 +81,37 @@ function no_self_ping( &$links ) {
             unset($links[$l]);
 }
 
+function load_webp_resources( &$html, $attached_file ) {
+	preg_match('/\.('.implode('|',LAZYWEBP_ENABLED_EXTENSIONS).')/i', $attached_file, $extension );
+	$extension = (!empty($extension[1])) ? $extension[1] : false;
+
+	if ($extension && in_array($extension, LAZYWEBP_ENABLED_EXTENSIONS )) {
+		if (file_exists($attached_file . ".webp")) {
+			$html = str_replace(".".$extension, ".".$extension. ".webp", $html);
+		}
+	}
+
+	return str_replace('loading="lazy"', "", $html);
+}
+
+
+function lazywebp_post_thumbnails( $html, $post_id ) {
+
+	$post_image_id = get_post_thumbnail_id($post_id);
+
+	$attached_file = get_attached_file($post_image_id);
+
+	return load_webp_resources($html, $attached_file);
+}
+
+function lazywebp_product_thumbnails( $html, $post ) {
+
+	$post_image_id = $post->get_image_id();
+
+	$attached_file = get_attached_file($post_image_id);
+
+	return load_webp_resources($html, $attached_file);
+}
 
 
 /**
