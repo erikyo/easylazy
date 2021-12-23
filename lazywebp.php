@@ -33,7 +33,11 @@ add_filter( 'post_thumbnail_html', 'lazywebp_post_thumbnails', 10, 3 );
 
 // IMAGES OPTIMIZATIONS
 add_action("wp_footer" , 'lazywebp_lazyload', 1);
-
+// IMAGES OPTIMIZATIONS - WOOCOMMERCE
+if ( class_exists( 'WooCommerce' ) ) {
+	add_filter( 'woocommerce_product_get_image', 'lazywebp_product_thumbnails', 10, 2 );
+	add_filter( 'woocommerce_single_product_image_thumbnail_html', 'lazywebp_post_thumbnails', 10, 2 );
+}
 
 /*
 * WP performance tweaks
