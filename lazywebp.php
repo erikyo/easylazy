@@ -13,9 +13,16 @@ if ( !defined( 'ABSPATH' ) ) {
     die( 'Sorry, this file cannot be accessed directly.' );
 }
 
+// Define support for webp images
 if ( !defined( 'LAZYWEBP_ENABLED_EXTENSIONS' ) ) {
     define( 'LAZYWEBP_ENABLED_EXTENSIONS', array( 'png', 'jpg', 'jpeg', 'gif' ) );
 }
+
+// Define support for webp images on plugin load
+if( !empty($_SERVER['HTTP_ACCEPT']) && strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) !== false ) {
+    define( 'LAZYWEBP_WEBP_SUPPORT', true );
+}
+
 
 // HIJACK IMAGE SRC and EXTRACT BACKGROUNDS
 add_filter('the_content', 'lazywebp_filter');
@@ -124,9 +131,7 @@ function lazywebp_lazyload() {
     <script async>
         "use strict";
 
-        const hasWebpSupport = function (e) {
-            return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0;
-        };
+        const hasWebpSupport = <?php echo (defined('LAZYWEBP_WEBP_SUPPORT')) ? 'true' : 'false' ?>;
 
         // check if the image exists
         async function imageExists(url, suffix = '') {
