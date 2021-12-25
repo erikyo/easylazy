@@ -130,7 +130,7 @@ function lazywebp_webp_by_post_image_id( $html, $post_image_id ) {
  * filters the content and replaces src with data-src (and srcset as well) and extracts the background from the inline css
  * @param $content
  *
- * @return array|mixed|string|string[]|null
+ * @return string - the string with replaced sources
  */
 function lazywebp_filter($content) {
     if (is_admin()) return $content;
@@ -168,6 +168,9 @@ function lazywebp_lazyload() {
     ?></style>
     <script async>
         "use strict";
+
+        const page = document.getElementById("page");
+        let observer; // will hold the intersection observer
         const hasWebpSupport = <?php echo (defined('LAZYWEBP_WEBP_SUPPORT')) ? 'true' : 'false' ?>;
 
         // check if the image exists
@@ -296,11 +299,11 @@ function lazywebp_lazyload() {
                         return;
                     }
 
-                    var imgs = node.querySelectorAll("[data-src]");
+                    const imgs = node.querySelectorAll("[data-src], [data-background]")
 
                     if (imgs.length) {
                         imgs.forEach(function (img) {
-                            return loadImage(img);
+                            observer.observe(img);
                         });
                     }
                 });
@@ -315,11 +318,11 @@ function lazywebp_lazyload() {
         }
 
         // the page mutation observer
-        const interceptor = function (page) {
+        const interceptor = function (content) {
             // Create an observer instance linked to the callback function
             const mutationObserver = new MutationObserver(initMutationObserver); // Start observing the target node for configured mutations
 
-            mutationObserver.observe(page, {
+            mutationObserver.observe(content, {
                 attributes: false,
                 childList: true,
                 subtree: true
@@ -327,12 +330,14 @@ function lazywebp_lazyload() {
         };
 
         // the image lazyload initializer
-        function lazyload(page, excludedCount = 0) {
-            const imgCollection = page.querySelectorAll("[data-src], [data-background]"); // start the intersection observer
+        function lazyload(content, excludedCount = 0) {
+
+            let imgCollection = page.querySelectorAll("[data-src], [data-background]");
 
             if ('IntersectionObserver' in window) {
 
-                let observer = new IntersectionObserver(initImageObserver,{ rootMargin: '100px' });
+                // Let's start the intersection observer
+                observer = new IntersectionObserver(initImageObserver,{ rootMargin: '100px' });
 
                 imgCollection.forEach(function (image, index) {
                     if (index < excludedCount) {
@@ -351,11 +356,10 @@ function lazywebp_lazyload() {
 
                         observer.observe(image);
                     }
-                });
 
-                // watch for new images added to the DOM
-                document.addEventListener("load", function() {
-                    interceptor(page)
+                    // watch for new images added to the DOM
+                    interceptor(content)
+
                 });
 
             } else {
@@ -368,7 +372,7 @@ function lazywebp_lazyload() {
         }
 
         // on script load trigger immediately the lazyload
-        lazyload(document.getElementById("page"));
+        lazyload(page);
 
     </script>
     <?php
