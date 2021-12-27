@@ -2,10 +2,10 @@
 
 // IMAGES OPTIMIZATIONS - WOOCOMMERCE
 if ( class_exists( 'WooCommerce' ) ) {
-	add_filter( 'woocommerce_product_get_image', 'easylazy_webp_by_post', 10, 2 ); // $html, $post
-	add_filter( 'woocommerce_single_product_image_thumbnail_html', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $attachment_id
+	add_filter( 'woocommerce_product_get_image', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post
+	add_filter( 'woocommerce_single_product_image_thumbnail_html', 'easylazy_webp_by_post_id', 10, 2 ); // $html, $product_id
 }
-add_filter( 'wp_get_attachment_image', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $attachment_id
+add_filter( 'wp_get_attachment_image', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post
 
 // hijack original image to webp using a filter (also remove loading="lazy")
 add_filter( 'post_thumbnail_html', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post_id
@@ -30,13 +30,11 @@ function load_webp_resources( &$html, $attached_file ) {
 	return str_replace('loading="lazy"', "", $html);
 }
 
-function easylazy_webp_by_post( $html, $post ) {
+function easylazy_webp_by_post_id( $html, $product ) {
 
-	$post_image_id = $post->get_image_id();
+	$post_image_id = get_post_thumbnail_id($product);
 
-	$attached_file = get_attached_file($post_image_id);
-
-	return load_webp_resources($html, $attached_file);
+	return  easylazy_webp_by_post_image_id($html, $post_image_id);
 }
 
 function easylazy_webp_by_post_image_id( $html, $post_image_id ) {
