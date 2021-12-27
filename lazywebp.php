@@ -241,7 +241,7 @@ function lazywebp_lazyload() {
                 // load the image src and srcset
                 const fileExt = elem.dataset.src.split('.').pop();
                 // reset the suffix if the format is already webp
-                if (fileExt === 'webp') suffix = ''
+                if (fileExt === 'webp') suffix = '';
 
                 elem.classList.add('lazyload');
 
@@ -299,7 +299,7 @@ function lazywebp_lazyload() {
                         return;
                     }
 
-                    const imgs = node.querySelectorAll("[data-src], [data-background]")
+                    const imgs = node.querySelectorAll("[data-src], [data-background]");
 
                     if (imgs.length) {
                         imgs.forEach(function (img) {
@@ -358,7 +358,7 @@ function lazywebp_lazyload() {
                     }
 
                     // watch for new images added to the DOM
-                    interceptor(content)
+                    interceptor(content);
 
                 });
 
@@ -497,4 +497,71 @@ function lazywebp_bulk_convert( $post_id ) {
             lazywebp_save_webp_copy( wp_get_attachment_metadata( $imageID ), $imageID );
         }
     }
+}
+
+
+class lazywebp_compress_HTML {
+
+	// Variables
+	protected $html;
+
+	public function __construct( $html ) {
+		if ( ! empty( $html ) ) {
+			$this->parseHTML( $html );
+		}
+	}
+
+	public function parseHTML( $html ) {
+		$this->html = $this->minifyHTML( $html );
+
+        $this->html .= "\n" . $this->bottomComment( $html, $this->html );
+	}
+
+	protected function minifyHTML( $html ) {
+
+		$search = array(
+			'/\/\*([\s\S]*?)\*\/|\s+\/\/.*|<!--.*-->/', // Remove JS,HTML comments and spaces
+			'/ {2,}/', // double spaces
+			'/\r|\n|\t/',    // shorten multiple whitespace sequences
+		);
+
+		$replace = array(
+			'',
+			' ',
+			'',
+		);
+
+		return preg_replace($search, $replace, $html);
+	}
+
+	protected function bottomComment( $raw, $compressed ) {
+		$raw        = strlen( $raw );
+		$compressed = strlen( $compressed );
+
+		$savings = round( ( $raw - $compressed ) / $raw * 100, 2 );
+
+		return '<!-- Compressed HTML size ' . $this->toKB($compressed) . 'KB - Original ' . $this->toKB($raw) . 'KB (saved ' . $savings . '%)-->';
+	}
+
+	protected function toKB( $bytes ) {
+	    return number_format($bytes / 1024, 2);
+	}
+
+	public function __toString() {
+		return $this->html;
+	}
+}
+
+
+add_action( 'get_header', 'lazywebp_html_compression_start' );
+function lazywebp_html_compression_start() {
+    ob_start( 'lazywebp_html_compression_finish' );
+}
+function lazywebp_html_compression_finish( $html ) {
+	if (substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip')) {
+		header( "Content-Encoding: gzip" );
+		return gzencode(new lazywebp_compress_HTML( $html ));
+	} else {
+		return new lazywebp_compress_HTML( $html );
+	}
 }
