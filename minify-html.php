@@ -31,12 +31,14 @@ class easylazy_compress_HTML {
 
 		$search = array(
 			'/\/\*([\s\S]*?)\*\/|\s+\/\/.*|<!--.*-->/', // Remove JS, CSS and HTML comments
-			'/\r|\n|\t/', // remove tabs and newline
+			'/\t/', // remove tabs and newline
+			'/(?!<script.*?>([\s\S]*?)<\/script>)^(\r|\n)/', // remove tabs and newline
 			'/>\s+</',    // remove empty space between tags
 			'/ {2,}/',    // shorten multiple whitespace sequences
 		);
 
 		$replace = array(
+			'',
 			'',
 			'',
 			'><',
