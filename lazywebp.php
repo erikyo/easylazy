@@ -135,11 +135,13 @@ function lazywebp_webp_by_post_image_id( $html, $post_image_id ) {
 function lazywebp_filter($content) {
     if (is_admin()) return $content;
 
+    $enabled_extensions = array_merge( LAZYWEBP_ENABLED_EXTENSIONS , array('webp'));
+
     // replace src with data-src
-    $content = preg_replace( '/(?:\s)src=("(?:[^\s]+.(?:'.implode('|',LAZYWEBP_ENABLED_EXTENSIONS).'))")/', ' src=\'\' data-src=\\1', $content );
+    $content = preg_replace( '/(?:\s)src=("(?:[^\s]+.(?:'.implode('|',$enabled_extensions).'))")/', ' src=\'\' data-src=\\1', $content );
 
     // replace srcset with data-srcset
-    $content = preg_replace( '/(?:\s)srcset=("(?:[^"]+.(?:'.implode('|',LAZYWEBP_ENABLED_EXTENSIONS).')).+")/', ' srcset=\'\' data-srcset=\\1', $content );
+    $content = preg_replace( '/(?:\s)srcset=("(?:[^"]+.(?:'.implode('|',$enabled_extensions).')).+")/', ' srcset=\'\' data-srcset=\\1', $content );
 
     // replace background-image with data-lazy-bg + style without the background
     $content = preg_replace_callback(
@@ -160,7 +162,7 @@ function lazywebp_lazyload() {
 	$lazyload_style = (LAZYWEBP_ANIMATED) ?
      '.lazyload{filter: opacity(0)}.lazyloaded{animation: lazyFadeIn linear .1s;filter: opacity(1)}@keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}' :
      '.lazyload{filter: opacity(0)}.lazyloaded{filter: opacity(1)}';
-    $admin_style = '.no-webp, .no-webp-background {box-shadow: 0 0 2px 4px red, 0 0 0 -4px red;position: relative;z-index: 1;outline: 6px dotted purple;}';
+    $admin_style = '.no-webp, .no-webp-background {box-shadow: 0 0 0 6px #f44336, 0 0 0 -4px #f44336;position: relative;z-index: 1;outline: 6px dotted #ff9800;}';
     ?>
     <style><?php
         echo $lazyload_style;
