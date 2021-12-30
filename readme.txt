@@ -8,15 +8,18 @@ Tested up to: 5.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Without making any effort you can easily convert and serve automatically webp images with lazyload to speedup your website consistently and with zero configuration.
+Optimization tool that convert and serve webp images without any configuration and without breaking your website!
 
 == Description ==
+Without making any effort you can easily convert and serve automatically webp images with lazyload to speedup your website consistently and with zero configuration.
 * Convert images to webp on upload. uploaded files will be duplicated in the same folder with the .webp suffix (so image.jpg will become ALSO image.jpg.webp)
 * Automatically serve generated webp images with lazy-loading, but if the image is missing or the browser doesn't support this feature will fallback with the original image.
 * Is designed so you don't have to change any code or configurations or other ⚠ danger stuff, just install the plugin and your site will be amazingly ⚡ faster ⚡
 
 == Setup ==
 * Install the plugin.
+* To generate the webp copy you need to generate (or regenerate) the thumbnails of that image. This is triggered automatically since the plugin is installed but for all the images that were already in media you may want to use a plugin to do so (indeed, suggested).
+* When you are logged into Wordpress you will see a red /orange border around images without webp version. This is useful for finding images that needs to be regenerated, and will be shown only for logged users.
 
 == Support ==
 Community support via the [support forums](https://wordpress.org/support/plugin/eazylazy/) on wordpress.org
