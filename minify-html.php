@@ -22,17 +22,22 @@ class easylazy_compress_HTML {
 	}
 
 	public function parseHTML( $html ) {
-		$this->html = $this->minifyHTML( $html );
+		$new_html = $this->minifyHTML( $html );
 
-		$this->html .= "\n" . $this->bottomComment( $html, $this->html );
+		if (substr_count($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip')) {
+			header( "Content-Encoding: gzip" );
+			$new_html = gzencode($new_html);
+		}
+
+		$this->html .= $new_html . "\n" . $this->bottomComment( $html, $new_html );
 	}
 
 	protected function minifyHTML( $html ) {
 
 		$search = array(
 			'/\/\*([\s\S]*?)\*\/|\s+\/\/.*|<!--.*-->/', // Remove JS, CSS and HTML comments
-			'/\t/', // remove tabs and newline
-			'/(?!<script.*?>([\s\S]*?)<\/script>)^(\r|\n)/', // remove tabs and newline
+			'/\t/', // remove tabs
+			'/(?!<script.*?>([\s\S]*?)<\/script>)^(\r|\n)/', // remove newline
 			'/>\s+</',    // remove empty space between tags
 			'/ {2,}/',    // shorten multiple whitespace sequences
 		);
@@ -54,7 +59,7 @@ class easylazy_compress_HTML {
 
 		$savings = round( ( $raw - $compressed ) / $raw * 100, 2 );
 
-		return '<!-- EasyLazy - Compressed HTML size ' . $this->toKB($compressed) . 'KB - Original ' . $this->toKB($raw) . 'KB (saved ' . $savings . '%)-->';
+		return '<!-- EasyLazy - Compressed HTML ' . $this->toKB($compressed) . 'KB - Original ' . $this->toKB($raw) . 'KB (saved ' . $savings . '%)-->';
 	}
 
 	protected function toKB( $bytes ) {
@@ -65,3 +70,5 @@ class easylazy_compress_HTML {
 		return $this->html;
 	}
 }
+
+

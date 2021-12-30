@@ -13,6 +13,9 @@ add_filter( 'post_thumbnail_html', 'easylazy_webp_by_post_image_id', 10, 2 ); //
 // HIJACK IMAGE SRC and EXTRACT BACKGROUNDS
 add_filter('the_content', 'easylazy_filter'); // $html
 
+// LAZYLOAD INIT
+add_action("wp_footer" , 'easylazy_lazyload', 1);
+
 
 
 function load_webp_resources( &$html, $attached_file ) {
