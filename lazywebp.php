@@ -19,9 +19,8 @@ if ( !defined( 'EASYLAZY_ENABLED_EXTENSIONS' ) ) {
 }
 
 // Display a fancy animation when showing the image (may score worst in CLP)
-if ( !defined( 'EASYLAZY_ANIMATED' ) ) {
-	define( 'EASYLAZY_ANIMATED', true );
-}
+if ( !defined( 'EASYLAZY_ANIMATED' ) ) define( 'EASYLAZY_ANIMATED', true );
+
 
 // Define support for webp images on plugin load
 if( !empty($_SERVER['HTTP_ACCEPT']) && strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) !== false ) {
@@ -30,44 +29,14 @@ if( !empty($_SERVER['HTTP_ACCEPT']) && strpos( $_SERVER['HTTP_ACCEPT'], 'image/w
 
 
 
-/*
-* WP performance tweaks
-*/
-add_filter( 'script_loader_src', 'easylazy_remove_script_version', 20 );
-add_filter( 'style_loader_src', 'easylazy_remove_script_version', 20 );
-add_action( 'pre_ping', 'no_self_ping' );
-
-add_filter('max_srcset_image_width', function() { return 700; });
-
-/**
- * Remove queries from static resources
-*/
-function easylazy_remove_script_version( $src ) {
-    $parts = explode( '?ver', $src );
-    return $parts[0];
-}
-
-/**
- * Disable wordpress self ping
- */
-function no_self_ping( &$links ) {
-    $home = get_option( 'home' );
-    foreach ( $links as $l => $link )
-        if ( 0 === strpos( $link, $home ) )
-            unset($links[$l]);
-}
-
-
-
-
-// LAZYLOAD INIT
-add_action("wp_footer" , 'easylazy_lazyload', 1);
 
 function easylazy_init() {
 
 	// require_once __DIR__ . '/settings.php';
 
     require_once __DIR__ . '/minify-html.php';
+
+	require_once __DIR__ . '/performance-tweaks.php';
 
 	require_once __DIR__ . '/webp-converter.php';
 	require_once __DIR__ . '/webp-lazyload.php';
