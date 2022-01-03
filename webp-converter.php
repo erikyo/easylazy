@@ -1,7 +1,7 @@
 <?php
 
 // WEBP automatic conversion on upload
-function easylazy_explode_filepath( $filepath, $attachment_id ) {
+function easylazy_explode_filepath( $filepath ) {
 	$uploads = wp_upload_dir();
 	if ( strpos( $filepath, "/" ) == false ) {
 		return array( $uploads['basedir'], "", $filepath );
@@ -22,7 +22,7 @@ function easylazy_explode_filename( $filename ) {
 
 function easylazy_save_webp_copy( $metadata, $attachment_id ) {
 
-	list( $basedir, $path, $filename ) = easylazy_explode_filepath( $metadata['file'], $attachment_id );
+	list( $basedir, $path, $filename ) = easylazy_explode_filepath( $metadata['file'] );
 	list( $fname, $fext ) = easylazy_explode_filename( $filename );
 
 	if ( isset( $metadata['mime-type'] ) ) {
@@ -92,7 +92,6 @@ function easylazy_save_webp_copy( $metadata, $attachment_id ) {
 
 	return $metadata;
 }
-
 add_filter( 'wp_generate_attachment_metadata', 'easylazy_save_webp_copy', 30, 2 );
 
 function easylazy_delete_webp_copy( $post_id ) {
@@ -100,7 +99,7 @@ function easylazy_delete_webp_copy( $post_id ) {
 	// get the file path for the image being deleted
 	$metadata = wp_get_attachment_metadata( $post_id );
 
-	list( $basedir, $path, $filename ) = easylazy_explode_filepath( $metadata['file'], $post_id );
+	list( $basedir, $path, $filename ) = easylazy_explode_filepath( $metadata['file'] );
 	list( $fname, $fext ) = easylazy_explode_filename( $filename );
 
 	// create a fake metadata/size to add the main image to remove list
