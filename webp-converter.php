@@ -37,10 +37,22 @@ function easylazy_save_webp_copy( $metadata, $attachment_id ) {
 
 	switch ( $fext ) {
 		case 'jpg':
+
+			$compressionQuality = 82;
+
+			if (extension_loaded('imagick') && class_exists('Imagick')) {
+				$img = new Imagick(  );
+				// the quality of a jpg can be compared with the webp compression with a ratio of 102.5 (82/80)
+				// source:  https://www.industrialempathy.com/posts/avif-webp-quality-settings/#quality-settings-for-a-range-of-jpeg-qualities
+				// getImageCompressionQuality need the exif data to work as intended otherwise will return 82
+				$img->readImage( $basedir . '/' . $path . '/' . $filename );
+				$compressionQuality =  round($img->getImageCompressionQuality() * 1.025);
+			}
+
 			foreach ( $file_collection as $value ) {
 				$image = imagecreatefromjpeg( $basedir . '/' . $path . '/' . $value );
 
-				imagewebp( $image, $basedir . '/' . $path . '/' . $value . '.webp', 95 );
+				imagewebp( $image, $basedir . '/' . $path . '/' . $value . '.webp', $compressionQuality );
 
 				imagedestroy( $image );
 			}
@@ -54,7 +66,7 @@ function easylazy_save_webp_copy( $metadata, $attachment_id ) {
 				imagealphablending( $image, true );
 				imagesavealpha( $image, true );
 
-				imagewebp( $image, $basedir . '/' . $path . '/' . $value . '.webp', 90 );
+				imagewebp( $image, $basedir . '/' . $path . '/' . $value . '.webp', 82 );
 
 				imagedestroy( $image );
 			}
@@ -68,7 +80,7 @@ function easylazy_save_webp_copy( $metadata, $attachment_id ) {
 				imagealphablending( $image, true );
 				imagesavealpha( $image, true );
 
-				imagewebp( $image, $basedir . '/' . $path . '/' . $value . '.webp', 90 );
+				imagewebp( $image, $basedir . '/' . $path . '/' . $value . '.webp', 82 );
 
 				imagedestroy( $image );
 			}
