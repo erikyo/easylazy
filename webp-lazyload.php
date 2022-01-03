@@ -5,16 +5,22 @@ if ( class_exists( 'WooCommerce' ) ) {
 	add_filter( 'woocommerce_product_get_image', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post
 	add_filter( 'woocommerce_single_product_image_thumbnail_html', 'easylazy_webp_by_post_id', 10, 2 ); // $html, $product_id
 }
-add_filter( 'wp_get_attachment_image', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post
 
-// hijack original image to webp using a filter (also remove loading="lazy")
-add_filter( 'post_thumbnail_html', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post_id
+if (!is_admin()) {
 
-// HIJACK IMAGE SRC and EXTRACT BACKGROUNDS
-add_filter('the_content', 'easylazy_filter'); // $html
+    // hijack attachment image function in replace src with data-src (same for background and srcset)
+    // in order to enable lazy-load
+    add_filter( 'wp_get_attachment_image', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post
 
-// LAZYLOAD INIT
-add_action("wp_footer" , 'easylazy_lazyload', 1);
+    // hijack original image to webp using a filter (also remove loading="lazy")
+    add_filter( 'post_thumbnail_html', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post_id
+
+    // HIJACK IMAGE SRC and EXTRACT BACKGROUNDS
+    add_filter('the_content', 'easylazy_filter'); // $html
+
+    // LAZYLOAD INIT
+    add_action("wp_footer" , 'easylazy_lazyload', 1);
+}
 
 
 
@@ -23,7 +29,7 @@ function load_webp_resources( &$html, $attached_file ) {
 	$extension = (!empty($extension[1])) ? $extension[1] : false;
 
 	if ($extension && in_array($extension, EASYLAZY_ENABLED_EXTENSIONS )) {
-		if (file_exists($attached_file . ".webp")) {
+		if ( file_exists($attached_file . ".webp") ) {
 			$html = str_replace('.'.$extension, ".$extension.webp", $html);
 			$html = preg_replace( '/(\s)src=/', ' src="" data-src=', $html );
 			$html = preg_replace( '/(\s)srcset=/', ' srcset="" data-srcset=', $html );
