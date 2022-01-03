@@ -1,12 +1,14 @@
 <?php
+if ( !is_admin() ) {
+	add_action( 'get_header', 'easylazy_html_compression_start' );
 
-add_action( 'get_header', 'easylazy_html_compression_start' );
-function easylazy_html_compression_start() {
-	ob_start( 'easylazy_html_compression_finish' );
-}
+	function easylazy_html_compression_start() {
+		ob_start( 'easylazy_html_compression_finish' );
+	}
 
-function easylazy_html_compression_finish( $html ) {
-	return new easylazy_compress_HTML( $html );
+	function easylazy_html_compression_finish( $html ) {
+		return new easylazy_compress_HTML( $html );
+	}
 }
 
 
