@@ -45,6 +45,20 @@ The listedformat will be converted into webp. if you need for example to convert
 LAZYWEBP_ANIMATED = true|false
 Display the lazyloaded images with a short but fancy fade-in animation
 
+EASYLAZY_LARGE_IMAGE_LIMIT = 1920
+the images after this width or height are larger than a mdpi monitor (a full-hd display for example).
+Assuming this image is an hdpi image we can adjust the image quality to the half without noticing any artifacts
+
+EASYLAZY_LARGE_IMAGE_QUALITY_PERCENTUAL = .5 (.5 means 50%)
+this is the ratio with which the hdpi image is compressed, if the original image was at 80% quality with a ratio of ".5" the hdpi quality will be 40%.
+
+EASYLAZY_DEFAULT_JPG_COMPRESSION = 82
+the quality that is used by default to compress images. This is valid for png and gif while jpgs are compressed if possible with the same quality level that is used for jpgs
+
+EASYLAZY_FEATURED_IMAGE_SIZE = 'large'
+in order to enable featured image preloading you need to specify the correct size used for the featured image
+
+
 == Changelog ==
 0.0.1 Initial release
 
