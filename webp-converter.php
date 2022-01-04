@@ -49,7 +49,7 @@ function easylazy_save_webp_copy( $metadata, $attachment_id ) {
 	);
 
 	// determine/set the quality to be used in the case of a jpg image
-	$compressionQuality = EASYLAZY_DEFAULT_JPG_COMPRESSION;
+	$compressionQuality = EASYLAZY_DEFAULT_IMG_COMPRESSION;
 	if ($mime == 'image/jpeg') {
 		if ( extension_loaded('imagick') && class_exists('Imagick') ) {
 			// the quality of a jpg can be compared with the webp compression with a ratio of 102.5 (82/80)

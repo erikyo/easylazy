@@ -18,11 +18,23 @@ if (!is_admin()) {
     // HIJACK IMAGE SRC and EXTRACT BACKGROUNDS
     add_filter('the_content', 'easylazy_filter'); // $html
 
+	// Preload featured image
+	add_action('wp_head', 'easylazy_featured_image_preload', 1);
+
     // LAZYLOAD INIT
     add_action("wp_footer" , 'easylazy_lazyload', 1);
 }
 
+function easylazy_featured_image_preload() {
+	if (has_post_thumbnail() && EASYLAZY_FEATURED_IMAGE_SIZE) {
+		$thumb_id = get_post_thumbnail_id( get_the_ID() );
+		$featured_img_src = wp_get_attachment_image_src( $thumb_id, EASYLAZY_FEATURED_IMAGE_SIZE )[0];
+		$featured_img_srcset = wp_get_attachment_image_srcset( $thumb_id );
+        $link = sprintf('<link rel="preload" as="image" href="%s" srcset="%s" />', $featured_img_src, $featured_img_srcset );
 
+		echo load_webp_resources($link, get_attached_file($thumb_id) );
+	}
+}
 
 function load_webp_resources( &$html, $attached_file ) {
 	preg_match('/\.('.implode('|',EASYLAZY_ENABLED_EXTENSIONS).')/i', $attached_file, $extension );

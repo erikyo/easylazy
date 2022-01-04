@@ -24,7 +24,8 @@ if ( !defined( 'EASYLAZY_ANIMATED' ) ) define( 'EASYLAZY_ANIMATED', true );
 // Halve the quality of the images automatically if the width or the height is bigger than this value (because they are likely to be hdpi)
 if ( !defined( 'EASYLAZY_LARGE_IMAGE_LIMIT' ) ) define( 'EASYLAZY_LARGE_IMAGE_LIMIT', 1920 );
 if ( !defined( 'EASYLAZY_LARGE_IMAGE_QUALITY_PERCENTUAL' ) ) define( 'EASYLAZY_LARGE_IMAGE_QUALITY_PERCENTUAL', .5 ); // .5 means 50%
-if ( !defined( 'EASYLAZY_DEFAULT_JPG_COMPRESSION' ) ) define( 'EASYLAZY_DEFAULT_JPG_COMPRESSION', 82 );
+if ( !defined( 'EASYLAZY_DEFAULT_IMG_COMPRESSION' ) ) define( 'EASYLAZY_DEFAULT_IMG_COMPRESSION', 82 );
+if ( !defined( 'EASYLAZY_FEATURED_IMAGE_SIZE' ) ) define( 'EASYLAZY_FEATURED_IMAGE_SIZE', false );
 
 
 // Define support for webp images on plugin load
