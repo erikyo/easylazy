@@ -1,27 +1,27 @@
 <?php
 
-// IMAGES OPTIMIZATIONS - WOOCOMMERCE
-if ( class_exists( 'WooCommerce' ) ) {
-	add_filter( 'woocommerce_single_product_image_thumbnail_html', 'easylazy_webp_by_post_id', 10, 2 ); // $html, $product_id
-	add_filter( 'woocommerce_product_get_image', 'easylazy_force_images_load', 20, 2 ); // $html, $post
-}
-
 if (!is_admin()) {
+
+	// Preload images
+	add_action('wp_head', 'easylazy_images_preload', 1);
 
     // hijack attachment image function in replace src with data-src (same for background and srcset)
     // in order to enable lazy-load
     add_filter( 'wp_get_attachment_image', 'easylazy_get_webp_by_thumb_id', 10, 2 ); // $html, $post
 
+	// WooCommerce
+	if ( class_exists( 'WooCommerce' ) ) {
+		add_filter( 'woocommerce_single_product_image_thumbnail_html', 'easylazy_webp_by_post_id', 10, 2 ); // $html, $product_id
+	}
+
     // hijack original featured image (also remove loading="lazy")
-    add_filter( 'post_thumbnail_html', 'easylazy_force_images_load', 20, 2 ); // $html, $post_id
+    add_filter( 'post_thumbnail_html', 'easylazy_get_webp_by_thumb_id', 10, 2 ); // $html, $post_id
+	add_filter( 'post_thumbnail_html', 'easylazy_force_images_load', 20, 2 ); // $html, $post_id
 
-    // HIJACK IMAGE SRC and EXTRACT BACKGROUNDS
-    add_filter('the_content', 'easylazy_filter'); // $html
+    // Hijack image src and extract backgrounds
+    add_filter('the_content', 'easylazy_filter', 10 ); // $html
 
-	// Preload images
-	add_action('wp_head', 'easylazy_images_preload', 1);
-
-    // LAZYLOAD INIT
+    // Lazyload init
     add_action("wp_footer" , 'easylazy_lazyload', 1);
 }
 
@@ -37,6 +37,7 @@ function easylazy_images_preload() {
 }
 
 
+
 function easylazy_load_webp_resources( &$html, $attached_file ) {
 	preg_match('/\.('.implode('|',EASYLAZY_ENABLED_EXTENSIONS).')/i', $attached_file, $extension );
 	$extension = !empty($extension[1]) ? $extension[1] : false;
@@ -44,9 +45,9 @@ function easylazy_load_webp_resources( &$html, $attached_file ) {
 	if ($extension && in_array($extension, EASYLAZY_ENABLED_EXTENSIONS )) {
 		if ( file_exists($attached_file . ".webp") ) {
 			$html = str_replace('.'.$extension, ".$extension.webp", $html);
-			$html = preg_replace( '/(\s)src=/', ' src="" data-src=', $html );
-			$html = preg_replace( '/(\s)srcset=/', ' srcset="" data-srcset=', $html );
 		}
+        $html = preg_replace( '/(\s)src=/', ' src="" data-src=', $html );
+        $html = preg_replace( '/(\s)srcset=/', ' srcset="" data-srcset=', $html );
 	}
 
 	return $html;
@@ -66,11 +67,19 @@ function easylazy_get_webp_by_thumb_id( $html, $post_image_id ) {
 	return easylazy_load_webp_resources($html, $attached_file);
 }
 
-function easylazy_force_images_load($html) {
-	$html = str_replace('loading="lazy"', "", $html);
-	$html = preg_replace( '/(\s)src="" data-src=/', ' src=', $html );
-	$html = preg_replace( '/(\s)srcset="" data-srcset=/', ' srcset=', $html );
-	return $html;
+function easylazy_force_images_load( $html, $post_id ) {
+	global $lazy_count;
+
+    if ($lazy_count <= EASYLAZY_SKIP_IMAGES) {
+	    $html = str_replace( ' loading="lazy"', ' data-lazy-count="'.$lazy_count++.'" ', $html );
+	    $html = preg_replace('/(class="[^"]*)/', "$1 nolazyload", $html);
+	    $html = preg_replace( '/" data-src="/', '', $html );
+	    $html = preg_replace( '/" data-srcset="/', '', $html );
+    } else {
+        $html = easylazy_load_webp_resources($html, $post_id);
+	    $html = str_replace( ' loading="lazy"', ' loading="lazy" data-lazy-count="'.$lazy_count++.'" ', $html );
+    }
+    return $html;
 }
 
 
@@ -83,10 +92,13 @@ function easylazy_force_images_load($html) {
 function easylazy_filter($content) {
 	if (is_admin()) return $content;
 
-	$enabled_extensions = array_merge( EASYLAZY_ENABLED_EXTENSIONS , array('webp'));
+	$enabled_extensions = array_merge( EASYLAZY_ENABLED_EXTENSIONS, array('webp'));
 
 	// replace src with data-src
-	$content = preg_replace( '/(?:\s)src=("(?:[^\s]+.(?:'.implode('|',$enabled_extensions).'))")/', ' src=\'\' data-src=\\1', $content );
+	$content = preg_replace_callback( '/(?:\s)src=("(?:[^\s]+.(?:'.implode('|',$enabled_extensions).'))")/', function ($matches) {
+		global $lazy_count;
+		return ' data-lazy-count="'.intval($lazy_count++).'" src=\'\' data-src='.$matches[1];
+	}, $content );
 
 	// replace srcset with data-srcset
 	$content = preg_replace( '/(?:\s)srcset=("(?:[^"]+.(?:'.implode('|',$enabled_extensions).')).+")/', ' srcset=\'\' data-srcset=\\1', $content );
