@@ -212,7 +212,8 @@ function easylazy_lazyload() {
                     // hijack the request to webp image format if available
                     if ( suffix !== '' ) {
                         elem.src = elem.dataset.src + suffix;
-                        elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll("." + fileExt, '.' + fileExt + suffix) : '';
+                        // to avoid double extension replacement (.webp.webp) we can search for ".jpg " since the srcset url is like this "https://xyz/image-1x1.jpg.webp 1w,"
+                        elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll("." + fileExt + " ", '.' + fileExt + suffix + " ") : '';
                     } else {
                         elem.src = elem.dataset.src;
                         if (elem.dataset.srcset) elem.srcset = elem.dataset.srcset;
