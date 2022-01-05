@@ -1,28 +1,28 @@
 <?php
 
-if (!is_admin()) {
+if ( ! is_admin() ) {
 
 	// Preload images
-	add_action('wp_head', 'easylazy_images_preload', 1);
+	add_action( 'wp_head', 'easylazy_images_preload', 1 );
 
-    // hijack attachment image function in replace src with data-src (same for background and srcset)
-    // in order to enable lazy-load
-    add_filter( 'wp_get_attachment_image', 'easylazy_get_webp_by_thumb_id', 10, 2 ); // $html, $post
+	// hijack attachment image function in replace src with data-src (same for background and srcset)
+	// in order to enable lazy-load
+	add_filter( 'wp_get_attachment_image', 'easylazy_get_webp_by_thumb_id', 10, 2 ); // $html, $post
 
 	// WooCommerce
 	if ( class_exists( 'WooCommerce' ) ) {
 		add_filter( 'woocommerce_single_product_image_thumbnail_html', 'easylazy_webp_by_post_id', 10, 2 ); // $html, $product_id
 	}
 
-    // hijack original featured image (also remove loading="lazy")
-    add_filter( 'post_thumbnail_html', 'easylazy_get_webp_by_thumb_id', 10, 2 ); // $html, $post_id
+	// hijack original featured image (also remove loading="lazy")
+	add_filter( 'post_thumbnail_html', 'easylazy_get_webp_by_thumb_id', 10, 2 ); // $html, $post_id
 	add_filter( 'post_thumbnail_html', 'easylazy_force_images_load', 20, 2 ); // $html, $post_id
 
-    // Hijack image src and extract backgrounds
-    add_filter('the_content', 'easylazy_filter', 10 ); // $html
+	// Hijack image src and extract backgrounds
+	add_filter( 'the_content', 'easylazy_filter', 10 ); // $html
 
-    // Lazyload init
-    add_action("wp_footer" , 'easylazy_lazyload', 1);
+	// Lazyload init
+	add_action( "wp_footer", 'easylazy_lazyload', 1 );
 }
 
 function easylazy_images_preload() {
