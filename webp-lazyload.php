@@ -2,43 +2,44 @@
 
 // IMAGES OPTIMIZATIONS - WOOCOMMERCE
 if ( class_exists( 'WooCommerce' ) ) {
-	add_filter( 'woocommerce_product_get_image', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post
 	add_filter( 'woocommerce_single_product_image_thumbnail_html', 'easylazy_webp_by_post_id', 10, 2 ); // $html, $product_id
+	add_filter( 'woocommerce_product_get_image', 'easylazy_force_images_load', 20, 2 ); // $html, $post
 }
 
 if (!is_admin()) {
 
     // hijack attachment image function in replace src with data-src (same for background and srcset)
     // in order to enable lazy-load
-    add_filter( 'wp_get_attachment_image', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post
+    add_filter( 'wp_get_attachment_image', 'easylazy_get_webp_by_thumb_id', 10, 2 ); // $html, $post
 
-    // hijack original image to webp using a filter (also remove loading="lazy")
-    add_filter( 'post_thumbnail_html', 'easylazy_webp_by_post_image_id', 10, 2 ); // $html, $post_id
+    // hijack original featured image (also remove loading="lazy")
+    add_filter( 'post_thumbnail_html', 'easylazy_force_images_load', 20, 2 ); // $html, $post_id
 
     // HIJACK IMAGE SRC and EXTRACT BACKGROUNDS
     add_filter('the_content', 'easylazy_filter'); // $html
 
-	// Preload featured image
-	add_action('wp_head', 'easylazy_featured_image_preload', 1);
+	// Preload images
+	add_action('wp_head', 'easylazy_images_preload', 1);
 
     // LAZYLOAD INIT
     add_action("wp_footer" , 'easylazy_lazyload', 1);
 }
 
-function easylazy_featured_image_preload() {
+function easylazy_images_preload() {
 	if (has_post_thumbnail() && EASYLAZY_FEATURED_IMAGE_SIZE) {
 		$thumb_id = get_post_thumbnail_id( get_the_ID() );
 		$featured_img_src = wp_get_attachment_image_src( $thumb_id, EASYLAZY_FEATURED_IMAGE_SIZE )[0];
 		$featured_img_srcset = wp_get_attachment_image_srcset( $thumb_id );
-        $link = sprintf('<link rel="preload" as="image" href="%s" srcset="%s" />', $featured_img_src, $featured_img_srcset );
+        $link = sprintf('<link rel="preload" as="image" importance="high" href="%s" srcset="%s" />', $featured_img_src, $featured_img_srcset );
 
-		echo load_webp_resources($link, get_attached_file($thumb_id) );
+		echo easylazy_load_webp_resources($link, get_attached_file($thumb_id) );
 	}
 }
 
-function load_webp_resources( &$html, $attached_file ) {
+
+function easylazy_load_webp_resources( &$html, $attached_file ) {
 	preg_match('/\.('.implode('|',EASYLAZY_ENABLED_EXTENSIONS).')/i', $attached_file, $extension );
-	$extension = (!empty($extension[1])) ? $extension[1] : false;
+	$extension = !empty($extension[1]) ? $extension[1] : false;
 
 	if ($extension && in_array($extension, EASYLAZY_ENABLED_EXTENSIONS )) {
 		if ( file_exists($attached_file . ".webp") ) {
@@ -48,21 +49,28 @@ function load_webp_resources( &$html, $attached_file ) {
 		}
 	}
 
-	return str_replace('loading="lazy"', "", $html);
+	return $html;
 }
 
-function easylazy_webp_by_post_id( $html, $product ) {
+function easylazy_webp_by_post_id( $html, $post_id ) {
 
-	$post_image_id = get_post_thumbnail_id($product);
+	$post_image_id = get_post_thumbnail_id($post_id);
 
-	return  easylazy_webp_by_post_image_id($html, $post_image_id);
+	return  easylazy_get_webp_by_thumb_id($html, $post_image_id);
 }
 
-function easylazy_webp_by_post_image_id( $html, $post_image_id ) {
+function easylazy_get_webp_by_thumb_id( $html, $post_image_id ) {
 
 	$attached_file = get_attached_file($post_image_id);
 
-	return load_webp_resources($html, $attached_file);
+	return easylazy_load_webp_resources($html, $attached_file);
+}
+
+function easylazy_force_images_load($html) {
+	$html = str_replace('loading="lazy"', "", $html);
+	$html = preg_replace( '/(\s)src="" data-src=/', ' src=', $html );
+	$html = preg_replace( '/(\s)srcset="" data-srcset=/', ' srcset=', $html );
+	return $html;
 }
 
 

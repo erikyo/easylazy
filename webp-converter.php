@@ -102,6 +102,7 @@ function easylazy_save_webp_copy( $metadata, $attachment_id ) {
 
 		// if the webp resize has been created, store it into wordpress metadata array
 		if ( imagewebp( $image, $basedir . '/' . $path . '/' . $file['file'] . '.webp', $compressionQuality ) ) {
+			// TODO: maybe an option that replace the original image with the webp version (currently a copy is created)
 			$metadata['sizes'][ $resize . '_webp' ] = array(
 				'file'      => $file['file'] . '.webp',
 				'width'     => $file['width'],
