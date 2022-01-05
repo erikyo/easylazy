@@ -41,12 +41,31 @@ function easylazy_save_webp_copy( $metadata, $attachment_id ) {
 	$file_collection = $metadata['sizes'];
 
 	// the full size image (that is already set for attachment like pdf)
-	if (!isset($file_collection['full'])) $file_collection['full'] = array(
-		'file'      => $filename,
-		'width'     => $metadata['width'],
-		'height'    => $metadata['height'],
-		'mime-type' => $mime
-	);
+	if (!isset($file_collection['full'])) {
+
+		$main_image = array(
+			'file'      => $filename,
+			'width'     => $metadata['width'],
+			'height'    => $metadata['height'],
+			'mime-type' => $mime
+		);
+
+		if (isset($metadata['original_image'])) {
+			$file_collection['scaled'] = $main_image;
+
+			$fullsize_image = wp_get_attachment_image_src($attachment_id);
+
+			$file_collection['full'] = array(
+				'file'      => $metadata['original_image'],
+				'width'     => $fullsize_image[1],
+				'height'    => $fullsize_image[2],
+				'mime-type' => $mime
+			);
+		} else {
+			$file_collection['full'] = $main_image;
+		}
+	}
+
 
 	// determine/set the quality to be used in the case of a jpg image
 	$compressionQuality = EASYLAZY_DEFAULT_IMG_COMPRESSION;
