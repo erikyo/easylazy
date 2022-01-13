@@ -39,11 +39,12 @@ function easylazy_images_preload() {
 
 
 function easylazy_load_webp_resources( &$html, $attached_file ) {
+
 	preg_match('/\.('.implode('|',EASYLAZY_ENABLED_EXTENSIONS).')/i', $attached_file, $extension );
 	$extension = !empty($extension[1]) ? $extension[1] : false;
 
 	if ($extension && in_array($extension, EASYLAZY_ENABLED_EXTENSIONS )) {
-		if ( file_exists($attached_file . ".webp") ) {
+		if ( $extension === 'webp' && file_exists($attached_file . ".webp") ) {
 			$html = str_replace('.'.$extension, ".$extension.webp", $html);
 		}
         $html = preg_replace( '/(\s)src=/', ' src="" data-src=', $html );
@@ -71,13 +72,13 @@ function easylazy_force_images_load( $html, $post_id ) {
 	global $lazy_count;
 
     if ($lazy_count <= EASYLAZY_SKIP_IMAGES) {
-	    $html = str_replace( ' loading="lazy"', ' data-lazy-count="'.$lazy_count++.'" ', $html );
+	    $html = str_replace( ' loading="lazy"', (strpos($html, 'lazy-count') === false) ? ' data-lazy-count="'.$lazy_count++.'" ' : '' , $html );
 	    $html = preg_replace('/(class="[^"]*)/', "$1 nolazyload", $html);
 	    $html = preg_replace( '/" data-src="/', '', $html );
 	    $html = preg_replace( '/" data-srcset="/', '', $html );
     } else {
         $html = easylazy_load_webp_resources($html, $post_id);
-	    $html = str_replace( ' loading="lazy"', ' loading="lazy" data-lazy-count="'.$lazy_count++.'" ', $html );
+	    $html = str_replace( ' loading="lazy"', (strpos($html, 'lazy-count') === false) ? ' loading="lazy" data-lazy-count="'.$lazy_count++.'" ' : '', $html );
     }
     return $html;
 }
@@ -122,13 +123,13 @@ function easylazy_lazyload() {
 	$lazyload_style = (EASYLAZY_ANIMATED) ?
 		'.lazyload{filter: opacity(0)}.lazyloaded{animation: lazyFadeIn linear .1s;filter: opacity(1)}@keyframes lazyFadeIn{0%{filter: opacity(0);}100%{filter: opacity(1)}}' :
 		'.lazyload{filter: opacity(0)}.lazyloaded{filter: opacity(1)}';
-	$admin_style = '.no-webp, .no-webp-background {box-shadow: 0 0 0 6px #f44336, 0 0 0 -4px #f44336;position: relative;z-index: 1;outline: 6px dotted #ff9800;}';
+	$admin_style = '.no-webp, .no-webp-background {box-shadow: 0 0 0 5px #f44336, 0 0 0 5px #f44336;position: relative;z-index: 1;outline: 8px dotted #fff;}';
 	?>
 	<style><?php
 		echo $lazyload_style;
 		if (is_user_logged_in()) echo $admin_style;
 		?></style>
-	<script async>
+	<script>
         "use strict";
 
         const page = document.getElementById("page");
@@ -175,9 +176,9 @@ function easylazy_lazyload() {
             // load the background image
             if (elem.dataset.background) {
 
-                elem.classList.add('lazyload');
-
                 const fileExt = elem.dataset.background.split('.').pop().split(/"|\'|\)/).shift();
+
+                elem.classList.add('lazyload');
 
                 const backgroundUrlWebp = ( fileExt === 'webp' ) ? fileExt : elem.dataset.background.replace( fileExt,  fileExt + suffix );
 
@@ -197,20 +198,17 @@ function easylazy_lazyload() {
 
                 delete elem.dataset.background;
 
-
             } else if (elem.classList.contains('lazyload') || !elem.getAttribute('src')) {
 
-                // load the image src and srcset
-                const fileExt = elem.dataset.src.split('.').pop();
-                // reset the suffix if the format is already webp
-                if (fileExt === 'webp') suffix = '';
+                const fileExt = elem.dataset.src.split('.').pop().split(/"|\'|\)/).shift();
 
                 elem.classList.add('lazyload');
 
-                await imageExists(elem.dataset.src, suffix).then(function () {
+                // loads the image src and srcset
+                await imageExists( elem.dataset.src, ( fileExt !== 'webp' ) ? suffix : '' ).then(function () {
 
                     // hijack the request to webp image format if available
-                    if ( suffix !== '' ) {
+                    if ( fileExt !== 'webp' ) {
                         elem.src = elem.dataset.src + suffix;
                         // to avoid double extension replacement (.webp.webp) we can search for ".jpg " since the srcset url is like this "https://xyz/image-1x1.jpg.webp 1w,"
                         elem.srcset = elem.dataset.srcset ? elem.dataset.srcset.replaceAll("." + fileExt + " ", '.' + fileExt + suffix + " ") : '';
